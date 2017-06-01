@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "aritmetica.h"
+#include <likwid.h>
 
 // Função do tempo e do Gradiente
 double timestamp(void);

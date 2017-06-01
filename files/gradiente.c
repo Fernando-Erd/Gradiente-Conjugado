@@ -19,22 +19,25 @@ inline double timestamp(void) {
 inline int GradienteConjugado (double *matriz, double *b, unsigned int N, int nBandas, int maxIter, double tol, double *x, FILE *arqSaida, double matrizSaida[][2]) {
 
     //aux = variavel auxiliar
-	//erro = erro aproximado do sistema
-	//s. v, z, vetorAux = Vetor Auxiliares
-	//r = Vetor do residuo
-	double aux,erro, m, s;
+    //erro = erro aproximado do sistema
+    //s. v, z, vetorAux = Vetor Auxiliares
+    //r = Vetor do residuo
+    double aux,aux2, erro, m, s;
     double *r, *v, *z, *vetorAux;
     int k;
 
-	//variaveis para medição de tempo
+    //variaveis para medição de tempo
     double maxtmetodo, mintmetodo, conttmetodo, mediatmetodo;
     double tminicio, tmfinal;
     double maxtresd, mintresd, conttresd, mediatresd;
     double tresdinicio, tresdfinal;
+	 double tiMVV, tiMMV, tmedMVV, tmedMMV;
 
+    likwid_markerInit();
     conttmetodo = 0.0, conttresd = 0.0;
     maxtmetodo = 0.0, maxtresd = 0.0;
     mintmetodo = 1000000, mintresd = 1000000;
+	 tmedMMV = 0.0, tmedMVV = 0.0;
 
     r = (double*) malloc (sizeof (double) * N);
     z = (double*) malloc (sizeof (double) * N);
@@ -51,10 +54,21 @@ inline int GradienteConjugado (double *matriz, double *b, unsigned int N, int nB
     for (k = 0; k < maxIter; k++) {
 
         tminicio = timestamp();
+        likwid_markerStartRegion("aux matriz");
 
+		  tiMMV = timestamp();
         multiplicaMatriz_Vetor (matriz, v, z, N, nBandas);
+		  tmedMMV = timestamp() - tiMMV + tmedMMV;
 
-        s = aux/(multiplicaVetor_Vetor(v,z, N));
+        likwid_markerStopRegion("aux matriz");
+        
+        likwid_markerStartRegion("aux vetor");
+
+		  tiMVV = timestamp();
+        aux2 = multiplicaVetor_Vetor(v,z, N);
+		  tmedMVV = timestamp() - tiMVV + tmedMVV;
+        likwid_markerStopRegion("aux vetor");
+        s = aux/aux2;
 
         multiplicaInteiro_Vetor (s, v, vetorAux, N);
         somaVetor(vetorAux,x,x,N);
@@ -64,7 +78,7 @@ inline int GradienteConjugado (double *matriz, double *b, unsigned int N, int nB
 
         tresdinicio = timestamp();
         
-		erro = multiplicaVetor_Vetor (r, r, N);
+	erro = multiplicaVetor_Vetor (r, r, N);
 
         tresdfinal = timestamp() - tresdinicio;
         tmfinal = (timestamp() - tminicio);
@@ -100,8 +114,10 @@ inline int GradienteConjugado (double *matriz, double *b, unsigned int N, int nB
 
     }
 
-    mediatmetodo = conttmetodo/k;
-    mediatresd = conttresd/k;
+    mediatmetodo = conttmetodo/maxIter;
+    mediatresd = conttresd/maxIter;
+	 tmedMMV = tmedMMV/maxIter;
+	 tmedMVV = tmedMVV/maxIter; 
 
     fprintf(arqSaida, "# Tempo Método CG: %lf %lf %lf\n", mintmetodo, mediatmetodo, maxtmetodo);
     fprintf(arqSaida, "# Tempo Resíduo: %lf %lf %lf\n", mintresd, mediatresd, maxtresd);
@@ -110,5 +126,6 @@ inline int GradienteConjugado (double *matriz, double *b, unsigned int N, int nB
     free (r);
     free (v);
     free (vetorAux);
+    likwid_markerClose();
     return k;
 }
